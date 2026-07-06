@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>🍔Taj Family Restaurant</title>
+        <!-- Font Awesome & Google Fonts -->
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+        <link href="https://fonts.googleapis.com/css2?family=Inter:opsz@14..32&display=swap" rel="stylesheet">
+        <link rel="stylesheet" href="food.css">
+        <style></style>
+    </head>
+    <body>
+        <div id="root"></div>
+        <!-- React + ReactDOM + Babel -->
+        <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+        <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+        <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+        <script type="text/babel">
+    const { useState, useEffect, useMemo } = React;
+
+    // ----- sample menu -----
+    const INITIAL_MENU = [
+      { id: '1', name: 'Margherita Pizza', description: 'Tomato, mozzarella, basil', price: 349.99, emoji: '🍕' },
+      { id: '2', name: 'Classic Burger', description: 'Beef, lettuce, cheese', price: 15, emoji: '🍔' },
+      { id: '3', name: 'Caesar Salad', description: 'Romaine, parmesan, croutons', price: 9.99, emoji: '🥗' },
+      { id: '4', name: 'Spaghetti Carbonara', description: 'Pancetta, egg, pecorino', price: 40.50, emoji: '🍝' },
+      { id: '5', name: 'Sushi Roll', description: 'Salmon, avocado, rice', price: 50, emoji: '🍣' },
+      { id: '6', name: 'Tacos', description: 'Beef, salsa, lime', price: 60, emoji: '🌮' },
+    ];
+
+    // ----- history (sample) -----
+    const INITIAL_HISTORY = [
+      { id: 'h1', items: ['Margherita Pizza', 'Tacos'], total: 349.99, date: '2026-07-03' },
+      { id: 'h2', items: ['Classic Burger', 'Caesar Salad'], total: 15, date: '2026-07-02' },
+      { id: 'h3', items: ['Sushi Roll'], total: 50, date: '2026-07-01' },
+    ];
+
+    // ----- main App -----
+    const App = () => {
+      const [menuItems] = useState(INITIAL_MENU);
+      const [cart, setCart] = useState([]);
+      const [orderPlaced, setOrderPlaced] = useState(false);
+      const [activePage, setActivePage] = useState('home'); // 'home' | 'cart' | 'orders' | 'history'
+      const [searchTerm, setSearchTerm] = useState('');
+      const [history] = useState(INITIAL_HISTORY);
+
+      // ----- cart helpers -----
+      const addToCart = (item) => {
+        setCart(prev => {
+          const existing = prev.find(c => c.id === item.id);
+          if (existing) {
+            return prev.map(c => c.id === item.id ? { ...c, quantity: c.quantity + 1 } : c);
+          } else {
+            return [...prev, { ...item, quantity: 1 }];
+          }
+        });
+      };
+
+      const updateQty = (id, delta) => {
+        setCart(prev => {
+          const item = prev.find(c => c.id === id);
+          if (!item) return prev;
+          const newQty = item.quantity + delta;
+          if (newQty <= 0) return prev.filter(c => c.id !== id);
+          return prev.map(c => c.id === id ? { ...c, quantity: newQty } : c);
+        });
+      };
+
+      const removeItem = (id) => setCart(prev => prev.filter(c => c.id !== id));
+
+      const clearCart = () => {
+        setCart([]);
+        setOrderPlaced(true);
+        setTimeout(() => setOrderPlaced(false), 2500);
+      };
+
+      const totalPrice = cart.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+      const totalItems = cart.reduce((acc, item) => acc + item.quantity, 0);
+
+      // filter menu by search
+      const filteredMenu = useMemo(() => {
+        if (!searchTerm.trim()) return menuItems;
+        return menuItems.filter(item => 
+          item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          item.description.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+      }, [menuItems, searchTerm]);
+
+      // ----- navigation items -----
+      const navLinks = [
+        { id: 'home', label: 'Home', icon: 'fa-solid fa-house' },
+        { id: 'cart', label: 'Cart', icon: 'fa-solid fa-cart-shopping' },
+        { id: 'orders', label: 'Orders', icon: 'fa-solid fa-clipboard-list' },
+        { id: 'history', label: 'History', icon: 'fa-solid fa-clock-rotate-left' },
+      ];
+
+      // ----- render page content -----
+      const renderPage = () => {
+        switch(activePage) {
+          case 'home':
+            return (
+              <div className="page-content">
+                <h2 style={{fontWeight: 600, marginBottom: '0.5rem'}}>🍽️ Today's Menu</h2>
+                <div className="menu-grid">
+                  {filteredMenu.map(item => (
+                    <div className="menu-item" key={item.id}>
+                      <div className="item-image">{item.emoji}</div>
+                      <div className="item-name">{item.name}</div>
+                      <div className="item-desc">{item.description}</div>
+                      <div className="item-footer">
+                        <span className="price">₹{item.price.toFixed(2)}</span>
+                        <button className="add-btn" onClick={() => addToCart(item)}>
+                          <i className="fas fa-plus"></i> Add
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                  {filteredMenu.length === 0 && (
+                    <div style={{gridColumn: '1/-1', textAlign: 'center', padding: '2rem', color: '#94a3b8'}}>
+                      <i className="fas fa-search"></i> No items match your search.
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          case 'cart':
+            return (
+              <div className="page-content">
+                <section className="cart-section">
+                  <div className="cart-title"><i className="fas fa-shopping-bag" style={{color:'#e11d48'}}></i> Your Cart</div>
+                  {cart.length === 0 ? (
+                    <div className="empty-cart"><i className="fas fa-circle" style={{fontSize:'0.5rem', marginRight:'0.4rem', color:'#cbd5e1'}}></i> Cart is empty — add some delicious items!</div>
+                  ) : (
+                    <>
+                      <div className="cart-items">
+                        {cart.map(item => (
+                          <div className="cart-item" key={item.id}>
+                            <div className="cart-item-info">
+                              <span style={{fontSize:'1.4rem'}}>{item.emoji}</span>
+                              <span className="cart-item-name">{item.name}</span>
+                            </div>
+                            <div className="cart-item-qty">
+                              <button className="qty-btn" onClick={() => updateQty(item.id, -1)}>−</button>
+                              <span style={{fontWeight:600, minWidth:'24px', textAlign:'center'}}>{item.quantity}</span>
+                              <button className="qty-btn" onClick={() => updateQty(item.id, 1)}>+</button>
+                              <span className="cart-item-price">₹{(item.price * item.quantity).toFixed(2)}</span>
+                              <button className="remove-item" onClick={() => removeItem(item.id)}><i className="fas fa-trash-alt"></i></button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="cart-total"><span>Total</span><span>₹{totalPrice.toFixed(2)}</span></div>
+                      <div style={{display:'flex', justifyContent:'flex-end', marginTop:'1.2rem'}}>
+                        <button className="checkout-btn" onClick={clearCart}>
+                          <i className="fas fa-check-circle"></i> {orderPlaced ? '✅ Order placed!' : 'Place Order'}
+                        </button>
+                      </div>
+                      {orderPlaced && <div style={{marginTop:'0.8rem', color:'#16a34a', fontWeight:500, textAlign:'right'}}><i className="fas fa-check-circle"></i> Thank you! Your order is confirmed.</div>}
+                    </>
+                  )}
+                </section>
+              </div>
+            );
+          case 'orders':
+            return (
+              <div className="page-content">
+                <div style={{background:'white', borderRadius:'1.5rem', padding:'1.8rem 2rem', border:'1px solid #f1f5f9'}}>
+                  <h3 style={{display:'flex', alignItems:'center', gap:'0.6rem'}}><i className="fas fa-clipboard-list" style={{color:'#e11d48'}}></i> Your Orders</h3>
+                  {cart.length === 0 ? (
+                    <div className="empty-cart">No active orders. Start by adding items to your cart!</div>
+                  ) : (
+                    <div style={{marginTop:'1rem'}}>
+                      <p><strong>Current cart:</strong> {cart.map(c => `${c.name} (${c.quantity})`).join(', ')}</p>
+                      <p><strong>Total:</strong> ₹{totalPrice.toFixed(2)}</p>
+                      <button className="checkout-btn" style={{marginTop:'1rem'}} onClick={clearCart}><i className="fas fa-check"></i> Place order now</button>
+                    </div>
+                  )}
+                  <div style={{marginTop:'2rem', borderTop:'1px solid #e2e8f0', paddingTop:'1rem', color:'#64748b'}}>
+                    <i className="fas fa-history"></i> Past orders appear in History.
+                  </div>
+                </div>
+              </div>
+            );
+          case 'history':
+            return (
+              <div className="page-content">
+                <div className="history-list">
+                  <h3 style={{display:'flex', alignItems:'center', gap:'0.6rem', marginBottom:'1rem'}}><i className="fas fa-clock-rotate-left" style={{color:'#e11d48'}}></i> Order History</h3>
+                  {history.length === 0 ? (
+                    <div className="empty-cart">No past orders.</div>
+                  ) : (
+                    history.map(h => (
+                      <div className="history-item" key={h.id}>
+                        <span><strong>{h.date}</strong> — {h.items.join(', ')}</span>
+                        <span>₹{h.total.toFixed(2)}</span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            );
+          default: return null;
+        }
+      };
+
+      return (
+        <div className="app">
+          {/* ----- NEW NAVIGATION BAR ----- */}
+          <nav className="navbar">
+            <div className="nav-left">
+              <div className="nav-logo">
+                <i className="fas fa-utensils"></i> Taj Family<span style={{color:'#0f172a'}}> Restaurent</span>
+              </div>
+              <div className="nav-links">
+                {navLinks.map(link => (
+                  <button 
+                    key={link.id}
+                    className={`nav-link ${activePage === link.id ? 'active' : ''}`}
+                    onClick={() => setActivePage(link.id)}
+                  >
+                    <i className={link.icon}></i> {link.label}
+                    {link.id === 'cart' && totalItems > 0 && (
+                      <span className="nav-cart-badge">{totalItems}</span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="nav-right">
+              <div className="search-box">
+                <input 
+                  type="text" 
+                  placeholder="Search food..." 
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+                <button onClick={() => setActivePage('home')}>
+                  <i className="fas fa-search"></i> 
+                </button>
+              </div>
+            </div>
+          </nav>
+
+          {/* page content */}
+          {renderPage()}
+
+          <div className="footer-note">
+            <i className="fas fa-code"></i> Developed By Dipu Singh Kushwaha · 
+            <span style={{marginLeft:'0.3rem'}}>🍔 food order</span>
+          </div>
+        </div>
+      );
+    };
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+        </script>
+    </body>
+</html>
